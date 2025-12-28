@@ -2,6 +2,7 @@ import random, curses, sys
 from copy import deepcopy
 
 board = [0] * 121
+
 next_pieces = []
 current_pieces = []
 pieces = ['.', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'X']
@@ -152,6 +153,7 @@ def handle_command(stdscr):
           current_pieces = deepcopy(next_pieces)
           for piece in current_pieces:
             board[piece['index']] = piece['color']
+          remove_lines()
           generate_next_colors()
           if not generate_next_indexes():
             for piece in next_pieces:
