@@ -20,16 +20,22 @@ def init_board():
       else:
         board[row * 11 + col] = 0
 
-def generate_next_pieces():
+def generate_next_colors():
   global next_pieces
   next_pieces.clear()
-  empty_indexes = [i for i, v in enumerate(board) if v == 0]
   for _ in range(3):
+    color = random.randint(1,7)
+    next_pieces.append({'color': color, 'index': 0})
+
+def generate_next_indexes():
+  global next_pieces
+  empty_indexes = [i for i, v in enumerate(board) if v == 0]
+  for i in range(3):
     if not empty_indexes: break
     index = random.choice(empty_indexes)
     empty_indexes.remove(index)
     color = random.randint(1,7)
-    next_pieces.append({'color': color, 'index': index})
+    next_pieces[i]['index'] = index
   if not empty_indexes: return 0
   else: return 1
 
@@ -140,21 +146,22 @@ def handle_command(stdscr):
       src_pos = chr(ord('a') + selected[1]-1) + str(10 - selected[0])
       dst_pos = chr(ord('a') + cur_col-1) + str(10 - cur_row)
       if make_move(src_pos, dst_pos):
-        remove_lines()
         selected = None
-        current_pieces = deepcopy(next_pieces)
-        if not generate_next_pieces():
-          for piece in next_pieces:
+        if not remove_lines():
+          generate_next_indexes()
+          current_pieces = deepcopy(next_pieces)
+          for piece in current_pieces:
             board[piece['index']] = piece['color']
-          render_board(stdscr)
-          stdscr.addstr(board_start_y+4, board_start_x+4, 'Game Over')
-          stdscr.refresh()
-          key = -1
-          while key == -1: key = stdscr.getch()
-          return 'exit'
-        for piece in current_pieces:
-          board[piece['index']] = piece['color']
-        remove_lines()
+          generate_next_colors()
+          if not generate_next_indexes():
+            for piece in next_pieces:
+              board[piece['index']] = piece['color']
+            render_board(stdscr)
+            stdscr.addstr(board_start_y+4, board_start_x+4, 'Game Over')
+            stdscr.refresh()
+            key = -1
+            while key == -1: key = stdscr.getch()
+            return 'exit'
       else: selected = None
   return 'move'
 
@@ -173,9 +180,10 @@ def main(stdscr):
   stdscr.keypad(1)
   curses.noecho()
   init_board()
-  generate_next_pieces()
+  generate_next_colors()
+  generate_next_indexes()
   current_pieces = deepcopy(next_pieces)
-  generate_next_pieces()
+  generate_next_colors()
   for piece in current_pieces:
     board[piece['index']] = piece['color']
   while True:
