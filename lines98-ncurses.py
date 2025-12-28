@@ -163,6 +163,7 @@ def handle_command(stdscr):
             stdscr.refresh()
             key = -1
             while key == -1: key = stdscr.getch()
+            with open('scores.txt', 'a') as f: f.write(str(score) + '\n')
             return 'exit'
       else: selected = None
   return 'move'
