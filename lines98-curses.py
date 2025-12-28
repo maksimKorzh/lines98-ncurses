@@ -1,8 +1,9 @@
 import random, curses, sys
+from copy import deepcopy
 
 board = [0] * 121
 next_pieces = []
-#pieces = ['.', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'X']
+current_pieces = []
 pieces = ['.', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'X']
 piece_colors = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
 cur_row, cur_col = 1, 1
@@ -100,7 +101,13 @@ def render_board(stdscr):
   height, width = stdscr.getmaxyx()
   board_start_y = height//2 - 4
   board_start_x = width//2 - 9
-  stdscr.addstr(board_start_y-3, board_start_x+4, 'Next: ' + ''.join([pieces[p['color']] for p in next_pieces]))
+  stdscr.addstr(board_start_y-3, board_start_x+4, 'Next: ')
+  cx = board_start_x+10
+  for piece in next_pieces:
+    ch = pieces[piece['color']]
+    color = curses.color_pair(piece_colors[piece['color']])
+    stdscr.addstr(board_start_y-3, cx, ch, color)
+    cx += 1
   stdscr.addstr(board_start_y-2, board_start_x+2, ' Score: ' + str(score))
   for row in range(1,10):
     for col in range(1,10):
@@ -113,7 +120,9 @@ def render_board(stdscr):
       else:
         stdscr.addch(board_start_y + row-1, board_start_x + (col-1)*2, ch, color | dark)
     stdscr.clrtoeol()
-    stdscr.refresh()
+  stdscr.addstr(board_start_y+10, board_start_x+2, 'Move:   hjkl')
+  stdscr.addstr(board_start_y+11, board_start_x+2, 'Select: SPACE')
+  stdscr.refresh()
 
 def handle_command(stdscr):
   global cur_row, cur_col, selected
@@ -133,17 +142,19 @@ def handle_command(stdscr):
       if make_move(src_pos, dst_pos):
         remove_lines()
         selected = None
+        current_pieces = deepcopy(next_pieces)
         if not generate_next_pieces():
           for piece in next_pieces:
             board[piece['index']] = piece['color']
           render_board(stdscr)
-          stdscr.addstr(board_start_y + 11, board_start_x+4, 'Game Over')
+          stdscr.addstr(board_start_y+4, board_start_x+4, 'Game Over')
           stdscr.refresh()
           key = -1
           while key == -1: key = stdscr.getch()
           return 'exit'
-        for piece in next_pieces:
+        for piece in current_pieces:
           board[piece['index']] = piece['color']
+        remove_lines()
       else: selected = None
   return 'move'
 
@@ -156,7 +167,6 @@ def main(stdscr):
   curses.init_pair(5, curses.COLOR_MAGENTA, -1)
   curses.init_pair(6, curses.COLOR_CYAN, -1)
   curses.init_pair(7, curses.COLOR_WHITE, -1)
-  curses.init_pair(8, curses.COLOR_BLACK, -1)
   curses.curs_set(0)
   curses.raw(1)
   stdscr.nodelay(1)
@@ -164,7 +174,9 @@ def main(stdscr):
   curses.noecho()
   init_board()
   generate_next_pieces()
-  for piece in next_pieces:
+  current_pieces = deepcopy(next_pieces)
+  generate_next_pieces()
+  for piece in current_pieces:
     board[piece['index']] = piece['color']
   while True:
     render_board(stdscr)
