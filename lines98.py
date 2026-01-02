@@ -200,16 +200,6 @@ def handle_command(stdscr):
       else: selected = None
   return 'move'
 
-def print_board():
-  print()
-  for row in range(1, 10):
-    for col in range(1, 10):
-      idx = row * 11 + col
-      if col == 1: print(' ' + str(10-row), end=' ')
-      print(' ' + str(board[idx]), end='')
-    print()
-  print('\n    a b c d e f g h i\n')
-
 def generate_moves():
   moves = []
   for src in range(len(board)):
