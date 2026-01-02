@@ -49,6 +49,7 @@ def place_next_pieces():
       if len(empty_indexes):
         index = random.choice(empty_indexes)
         board[index] = piece['color']
+  remove_lines()
 
 def pos_to_index(pos):
   col = ord(pos[0].lower()) - ord('a') + 1
@@ -185,7 +186,6 @@ def handle_command(stdscr):
         if not remove_lines():
           current_pieces = deepcopy(next_pieces)
           place_next_pieces()
-          remove_lines()
           generate_next_colors()
           generate_next_indexes()
           if not generate_next_indexes():
