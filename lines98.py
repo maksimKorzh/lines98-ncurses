@@ -21,15 +21,12 @@ def init_board():
       else:
         board[row * 11 + col] = 0
 
-def generate_next_colors():
+def generate_next_pieces():
   global next_pieces
   next_pieces.clear()
   for _ in range(3):
     color = random.randint(1,7)
     next_pieces.append({'color': color, 'index': 0})
-
-def generate_next_indexes():
-  global next_pieces
   empty_indexes = [i for i, v in enumerate(board) if v == 0]
   for i in range(3):
     if not empty_indexes: break
@@ -186,9 +183,7 @@ def handle_command(stdscr):
         selected = None
         if not remove_lines():
           place_next_pieces()
-          generate_next_colors()
-          generate_next_indexes()
-          if not generate_next_indexes():
+          if not generate_next_pieces():
             with open('games.txt', 'a') as f: f.write(game_moves + ' ' + str(score) + '\n')
             place_next_pieces()
             render_board(stdscr)
@@ -240,11 +235,9 @@ def new_game():
   game_moves = ''
   score = 0
   init_board()
-  generate_next_colors()
-  generate_next_indexes()
-  generate_next_colors()
+  generate_next_pieces()
   place_next_pieces()
-  generate_next_indexes()
+  generate_next_pieces()
 
 def main(stdscr):
   curses.use_default_colors()
