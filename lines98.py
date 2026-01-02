@@ -6,7 +6,7 @@ board = [0] * 121
 next_pieces = []
 current_pieces = []
 pieces = ['.', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'X']
-piece_colors = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
+piece_colors = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
 cur_row, cur_col = 1, 1
 board_start_y, board_start_x = 0, 0
 selected = None
@@ -40,14 +40,33 @@ def generate_next_indexes():
   if not empty_indexes: return 0
   else: return 1
 
+def place_next_pieces():
+  for piece in next_pieces:
+    if board[piece['index']] == 0:
+      board[piece['index']] = piece['color']
+    else:
+      empty_indexes = [i for i, v in enumerate(board) if v == 0]
+      if len(empty_indexes):
+        index = random.choice(empty_indexes)
+        board[index] = piece['color']
+
+def pos_to_index(pos):
+  col = ord(pos[0].lower()) - ord('a') + 1
+  row = 10-int(pos[1])
+  return row * 11 + col
+
+def index_to_pos(idx):
+  row = idx // 11
+  col = idx % 11
+  if not (1 <= row <= 9 and 1 <= col <= 9): return None
+  file = chr(ord('a') + (col - 1))
+  rank = str(10 - row)
+  return file + rank
+
 def make_move(src, dst):
   if dst == src: return 0
-  def to_index(pos):
-    col = ord(pos[0].lower()) - ord('a') + 1
-    row = 10-int(pos[1])
-    return row * 11 + col
-  src_index = to_index(src)
-  dst_index = to_index(dst)
+  src_index = pos_to_index(src)
+  dst_index = pos_to_index(dst)
   if board[src_index] == 0: return 0
   visited = set()
   queue = [src_index]
@@ -108,14 +127,23 @@ def render_board(stdscr):
   height, width = stdscr.getmaxyx()
   board_start_y = height//2 - 4
   board_start_x = width//2 - 9
-  stdscr.addstr(board_start_y-3, board_start_x+4, 'Next: ')
+  stdscr.addstr(board_start_y-4, board_start_x+4, 'Next: ')
   cx = board_start_x+10
   for piece in next_pieces:
     ch = pieces[piece['color']]
     color = curses.color_pair(piece_colors[piece['color']])
-    stdscr.addstr(board_start_y-3, cx, ch, color)
+    stdscr.addstr(board_start_y-4, cx, ch, color)
     cx += 1
-  stdscr.addstr(board_start_y-2, board_start_x+2, ' Score: ' + str(score))
+  stdscr.addstr(board_start_y-3, board_start_x+2, ' Score: ' + str(score))
+  stdscr.clrtoeol()
+  stdscr.addstr(board_start_y-2, board_start_x-1, ' Selected: ')
+  if selected is not None:
+    selected_piece = board[selected[0]*11+selected[1]]
+    color = curses.color_pair(piece_colors[selected_piece])
+    stdscr.addstr(board_start_y-2, board_start_x+10, pieces[selected_piece], color)
+  else:
+    stdscr.addstr(board_start_y-2, board_start_x+10, 'None')
+  stdscr.clrtoeol()
   for row in range(1,10):
     for col in range(1,10):
       idx = row*11 + col
@@ -126,9 +154,14 @@ def render_board(stdscr):
         stdscr.addch(board_start_y + row-1, board_start_x + (col-1)*2, ch, color | curses.A_REVERSE)
       else:
         stdscr.addch(board_start_y + row-1, board_start_x + (col-1)*2, ch, color | dark)
+        for piece in next_pieces:
+          if idx == piece['index']:
+            color = curses.color_pair(piece_colors[piece['color']])
+            stdscr.addch(board_start_y + row-1, board_start_x + (col-1)*2, 'o', color)
     stdscr.clrtoeol()
-  stdscr.addstr(board_start_y+10, board_start_x+2, 'Move:   hjkl')
-  stdscr.addstr(board_start_y+11, board_start_x+2, 'Select: SPACE')
+  stdscr.addstr(board_start_y+10, board_start_x+2, 'New:    N')
+  stdscr.addstr(board_start_y+11, board_start_x+2, 'Move:   hjkl')
+  stdscr.addstr(board_start_y+12, board_start_x+2, 'Select: SPACE')
   stdscr.refresh()
 
 def handle_command(stdscr):
@@ -136,6 +169,7 @@ def handle_command(stdscr):
   key = -1
   while key == -1: key = stdscr.getch()
   if key == ord('Q'): return 'exit'
+  elif key == ord('N'): new_game()
   elif key == ord('k'): cur_row = max(1, cur_row-1)
   elif key == ord('j'): cur_row = min(9, cur_row+1)
   elif key == ord('h'): cur_col = max(1, cur_col-1)
@@ -149,24 +183,65 @@ def handle_command(stdscr):
       if make_move(src_pos, dst_pos):
         selected = None
         if not remove_lines():
-          generate_next_indexes()
           current_pieces = deepcopy(next_pieces)
-          for piece in current_pieces:
-            board[piece['index']] = piece['color']
+          place_next_pieces()
           remove_lines()
           generate_next_colors()
+          generate_next_indexes()
           if not generate_next_indexes():
-            for piece in next_pieces:
-              board[piece['index']] = piece['color']
+            place_next_pieces()
             render_board(stdscr)
             stdscr.addstr(board_start_y+4, board_start_x+4, 'Game Over')
             stdscr.refresh()
             key = -1
             while key == -1: key = stdscr.getch()
-            with open('scores.txt', 'a') as f: f.write(str(score) + '\n')
-            return 'exit'
+            scores = []
+            with open('scores.txt') as f: scores = sorted([int(i) for i in f.read().split('\n')[:-1]], reverse=True)
+            scores.append(score)
+            with open('scores.txt', 'w') as f: [f.write(str(i)+'\n') for i in scores]
+            stdscr.clear()
+            new_game()
       else: selected = None
   return 'move'
+
+def print_board():
+  print()
+  for row in range(1, 10):
+    for col in range(1, 10):
+      idx = row * 11 + col
+      if col == 1: print(' ' + str(10-row), end=' ')
+      print(' ' + str(board[idx]), end='')
+    print()
+  print('\n    a b c d e f g h i\n')
+
+def generate_moves():
+  moves = []
+  for src in range(len(board)):
+    if board[src] == 8 or board[src] == 0: continue
+    for dst in range(len(board)):
+      if board[dst] != 0: continue
+      moves.append((index_to_pos(src), index_to_pos(dst)))
+  return moves
+
+def legal_moves():
+  moves = []
+  for move in generate_moves():
+    old_board = deepcopy(board)
+    if make_move(move[0], move[1]): moves.append(move)
+    board[:] = old_board
+  return moves
+  
+def new_game():
+  global score
+  score = 0
+  init_board()
+  generate_next_colors()
+  generate_next_indexes()
+  current_pieces = deepcopy(next_pieces)
+  generate_next_colors()
+  for piece in current_pieces:
+    board[piece['index']] = piece['color']
+  generate_next_indexes()
 
 def main(stdscr):
   curses.use_default_colors()
@@ -182,15 +257,9 @@ def main(stdscr):
   stdscr.nodelay(1)
   stdscr.keypad(1)
   curses.noecho()
-  init_board()
-  generate_next_colors()
-  generate_next_indexes()
-  current_pieces = deepcopy(next_pieces)
-  generate_next_colors()
-  for piece in current_pieces:
-    board[piece['index']] = piece['color']
+  new_game()
   while True:
     render_board(stdscr)
     if handle_command(stdscr) == 'exit': break
 
-curses.wrapper(main)
+if __name__ == '__main__': curses.wrapper(main)
