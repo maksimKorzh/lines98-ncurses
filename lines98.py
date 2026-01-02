@@ -4,7 +4,6 @@ from copy import deepcopy
 board = [0] * 121
 
 next_pieces = []
-game_moves = ''
 pieces = ['.', 'O', 'O', 'O', 'O', 'O', 'O', 'O', 'X']
 piece_colors = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7}
 cur_row, cur_col = 1, 1
@@ -163,7 +162,7 @@ def render_board(stdscr):
   stdscr.refresh()
 
 def handle_command(stdscr):
-  global cur_row, cur_col, selected, game_moves
+  global cur_row, cur_col, selected
   key = -1
   while key == -1: key = stdscr.getch()
   if key == ord('Q'): return 'exit'
@@ -179,12 +178,10 @@ def handle_command(stdscr):
       src_pos = chr(ord('a') + selected[1]-1) + str(10 - selected[0])
       dst_pos = chr(ord('a') + cur_col-1) + str(10 - cur_row)
       if make_move(src_pos, dst_pos):
-        game_moves += src_pos + dst_pos + ' '
         selected = None
         if not remove_lines():
           place_next_pieces()
           if not generate_next_pieces():
-            with open('games.txt', 'a') as f: f.write(game_moves + ' ' + str(score) + '\n')
             place_next_pieces()
             render_board(stdscr)
             stdscr.addstr(board_start_y+4, board_start_x+4, 'Game Over')
@@ -231,8 +228,7 @@ def legal_moves():
   return moves
   
 def new_game():
-  global score, game_moves
-  game_moves = ''
+  global score
   score = 0
   init_board()
   generate_next_pieces()
